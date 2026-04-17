@@ -14,6 +14,8 @@ const timeframeSelect = document.getElementById("timeframeSelect");
 const authorCard = document.querySelector(".author-card");
 const authorBubbles = [...document.querySelectorAll(".author-bubble")];
 const authorOrbitBall = document.querySelector(".author-orbit-ball");
+const DATA_START_YEAR = 2020;
+const DATA_START_MONTH = 1;
 
 const DEFAULT_STOCKS = [
   { code: "0050", name: "元大台灣50" },
@@ -781,11 +783,14 @@ function parseCsv(text) {
   });
 }
 
-function getRecentMonthKeys(count = 8) {
+function getRecentMonthKeys(startYear = DATA_START_YEAR, startMonth = DATA_START_MONTH) {
   const keys = [];
   const cursor = new Date();
   cursor.setDate(1);
-  for (let i = 0; i < count; i += 1) {
+  while (
+    cursor.getFullYear() > startYear
+    || (cursor.getFullYear() === startYear && cursor.getMonth() + 1 >= startMonth)
+  ) {
     keys.push(`${cursor.getFullYear()}${String(cursor.getMonth() + 1).padStart(2, "0")}01`);
     cursor.setMonth(cursor.getMonth() - 1);
   }
@@ -832,7 +837,7 @@ async function fetchTwseMonth(code, dateKey) {
 }
 
 async function fetchTwseStockData(code) {
-  const results = await Promise.all(getRecentMonthKeys(8).map((key) => fetchTwseMonth(code, key)));
+  const results = await Promise.all(getRecentMonthKeys().map((key) => fetchTwseMonth(code, key)));
   const nameSource = results.find((item) => item.title)?.title || "";
   const candles = results.flatMap((item) => item.rows).sort((a, b) => new Date(a.date) - new Date(b.date));
   const deduped = candles.filter((candle, index, array) => index === 0 || candle.date !== array[index - 1].date);

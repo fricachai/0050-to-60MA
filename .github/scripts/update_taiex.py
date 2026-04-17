@@ -6,7 +6,8 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 
-TAIEX_SOURCE_URL = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=1y"
+DATA_START = datetime(2020, 1, 1, tzinfo=timezone.utc)
+TAIEX_SOURCE_URL = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&period1={period1}&period2={period2}"
 TAIEX_OUTPUT_PATH = Path("data/taiex.json")
 TWSE_STOCK_DAY_URL = "https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date={date_key}&stockNo={stock_code}"
 STOCK_OUTPUT_PATHS = {
@@ -28,7 +29,9 @@ def fetch_json(url: str) -> dict:
 
 
 def fetch_taiex() -> list[dict]:
-    payload = fetch_json(TAIEX_SOURCE_URL)
+    period1 = int(DATA_START.timestamp())
+    period2 = int(datetime.now(timezone.utc).timestamp())
+    payload = fetch_json(TAIEX_SOURCE_URL.format(period1=period1, period2=period2))
     result = payload["chart"]["result"][0]
     quote = result["indicators"]["quote"][0]
     timestamps = result["timestamp"]
@@ -60,18 +63,19 @@ def roc_to_iso(date_text: str) -> str:
     return datetime(roc_year + 1911, month, day, tzinfo=timezone.utc).isoformat()
 
 
-def recent_month_keys(count: int = 8) -> list[str]:
+def recent_month_keys(start_year: int = 2020, start_month: int = 1) -> list[str]:
     now = datetime.now(timezone.utc)
     year = now.year
     month = now.month
     keys = []
-    for offset in range(count):
-        current_month = month - offset
-        current_year = year
+    current_year = year
+    current_month = month
+    while current_year > start_year or (current_year == start_year and current_month >= start_month):
+        keys.append(f"{current_year}{current_month:02d}01")
+        current_month -= 1
         while current_month <= 0:
             current_month += 12
             current_year -= 1
-        keys.append(f"{current_year}{current_month:02d}01")
     return keys
 
 
@@ -84,7 +88,7 @@ def parse_number(value: str) -> float | None:
 
 def fetch_stock(stock_code: str) -> list[dict]:
     candles = []
-    for date_key in recent_month_keys(8):
+    for date_key in recent_month_keys():
         payload = fetch_json(TWSE_STOCK_DAY_URL.format(date_key=date_key, stock_code=stock_code))
         if payload.get("stat") != "OK":
             continue
