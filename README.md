@@ -2,7 +2,13 @@
 
 這是一個可直接部署到 GitHub Pages 的靜態股票觀察面板。
 
-本地使用時，直接開啟 `index.html` 即可。
+本地使用時，不要直接雙擊 `index.html`，請先在專案目錄啟動靜態伺服器：
+
+```powershell
+python -m http.server 8000
+```
+
+然後開啟 `http://localhost:8000/`。
 
 ## GitHub Pages 部署
 
@@ -16,7 +22,21 @@
 
 部署完成後，網址通常會是：
 
-`https://fricachai.github.io/Stock_K-chat/`
+`https://fricachai.github.io/0050-to-60MA/`
+
+## 買點提醒信
+
+- 系統會針對 `0050` 與 `2330` 檢查兩種買點：
+- `貼近 SMA60 轉強`
+- `跌破 / 貫穿 SMA60 後收復轉強`
+- 只有在 `MACD` 或 `KD` 同步出現低檔轉強時，才會標示買點並觸發提醒。
+- 郵件收件者固定為 `fricachai@gmail.com`，前端不提供輸入其他信箱。
+- GitHub Actions workflow `Buy Signal Alert` 已建立，但要真的發信，需在 repo `Settings -> Secrets and variables -> Actions` 設定：
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `ALERT_FROM_EMAIL`
 
 ## 功能
 

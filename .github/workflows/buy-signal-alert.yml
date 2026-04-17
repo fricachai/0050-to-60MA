@@ -1,0 +1,32 @@
+name: Buy Signal Alert
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "35 9 * * 1-5"
+
+jobs:
+  send-alert:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Refresh latest market cache
+        run: python .github/scripts/update_taiex.py
+
+      - name: Send buy signal email
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ALERT_FROM_EMAIL: ${{ secrets.ALERT_FROM_EMAIL }}
+        run: python .github/scripts/send_buy_alert.py

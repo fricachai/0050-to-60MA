@@ -266,6 +266,107 @@ function computeKd(candles) {
   return { k, d };
 }
 
+function getRecentSeriesMin(series, endIndex, lookback, fallback = null) {
+  const values = series
+    .slice(Math.max(0, endIndex - lookback + 1), endIndex + 1)
+    .filter((value) => value != null);
+  if (!values.length) return fallback;
+  return Math.min(...values);
+}
+
+function detectBuySignals(candles, sma60, macd, kd) {
+  const signals = [];
+  let lastSignalIndex = -10;
+
+  for (let i = 60; i < candles.length; i += 1) {
+    const candle = candles[i];
+    const prev = candles[i - 1];
+    const base = sma60[i];
+    const prevBase = sma60[i - 1];
+    const hist = macd.hist[i];
+    const prevHist = macd.hist[i - 1];
+    const dif = macd.dif[i];
+    const prevDif = macd.dif[i - 1];
+    const dea = macd.dea[i];
+    const prevDea = macd.dea[i - 1];
+    const kValue = kd.k[i];
+    const dValue = kd.d[i];
+    const prevK = kd.k[i - 1];
+    const prevD = kd.d[i - 1];
+    if ([base, prevBase, hist, prevHist, dif, prevDif, dea, prevDea, kValue, dValue, prevK, prevD].some((value) => value == null)) continue;
+
+    const recentHistMin = getRecentSeriesMin(macd.hist, i, 6, 0);
+    const recentKMin = getRecentSeriesMin(kd.k, i, 6, 50);
+    const recentDMin = getRecentSeriesMin(kd.d, i, 6, 50);
+    const lowToBasePct = (candle.low - base) / base;
+    const closeToBasePct = (candle.close - base) / base;
+    const nearBase = lowToBasePct >= -0.012 && lowToBasePct <= 0.02;
+    const piercedBase = candle.low < base * 0.998;
+    const recoveredClose = candle.close >= base * 0.995;
+    const reboundStart = candle.close > candle.open && candle.close > prev.close && candle.close >= candle.high - (candle.high - candle.low) * 0.45;
+    const macdTurningUp = hist > prevHist && dif >= prevDif && recentHistMin <= 0;
+    const kdTurningUp = (
+      ((kValue > dValue && prevK <= prevD) || (kValue > prevK && dValue >= prevD))
+      && Math.min(recentKMin ?? 50, recentDMin ?? 50) <= 35
+    );
+    const oscillatorConfirmed = macdTurningUp || kdTurningUp;
+
+    const nearBounceSignal = (
+      nearBase
+      && closeToBasePct >= -0.003
+      && !piercedBase
+      && base >= prevBase * 0.997
+      && reboundStart
+      && oscillatorConfirmed
+    );
+
+    const reclaimSignal = (
+      piercedBase
+      && recoveredClose
+      && candle.close >= prev.close
+      && reboundStart
+      && oscillatorConfirmed
+    );
+
+    if ((nearBounceSignal || reclaimSignal) && i - lastSignalIndex >= 4) {
+      const strengthParts = [];
+      if (macdTurningUp) strengthParts.push("MACD");
+      if (kdTurningUp) strengthParts.push("KD");
+      signals.push({
+        index: i,
+        type: reclaimSignal ? "reclaim" : "near",
+        label: reclaimSignal ? "買點: 收復60" : "買點: 貼60轉強",
+        confirmers: strengthParts,
+      });
+      lastSignalIndex = i;
+    }
+  }
+
+  return signals;
+}
+
+function drawSignalTag(x, y, label, type) {
+  const paddingX = 10;
+  const height = 22;
+  const radius = 10;
+  ctx.save();
+  ctx.font = `12px "Segoe UI", "Noto Sans TC", sans-serif`;
+  const width = ctx.measureText(label).width + paddingX * 2;
+  const boxX = x - width / 2;
+  const boxY = y - height;
+  const fill = type === "reclaim" ? "rgba(255, 90, 95, 0.92)" : "rgba(255, 196, 67, 0.94)";
+  const stroke = type === "reclaim" ? "rgba(255, 155, 160, 0.95)" : "rgba(255, 228, 153, 0.95)";
+  ctx.strokeStyle = stroke;
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x, y + 12);
+  ctx.stroke();
+  drawRoundRect(boxX, boxY, width, height, radius, fill, stroke);
+  drawText(label, x, boxY + 15, "#111317", 12, "center");
+  ctx.restore();
+}
+
 function drawText(text, x, y, color = "#f5f6fa", size = 14, align = "left") {
   ctx.fillStyle = color;
   ctx.font = `${size}px "Segoe UI", "Noto Sans TC", sans-serif`;
@@ -407,6 +508,7 @@ function renderChart(stock) {
   const sma60 = sma(closes, 60);
   const macd = computeMacd(candles);
   const kd = computeKd(candles);
+  const buySignals = detectBuySignals(candles, sma60, macd, kd);
   const lastCandle = candles[candles.length - 1];
   const prevClose = candles[candles.length - 2]?.close ?? lastCandle.close;
   const changeValue = lastCandle.close - prevClose;
@@ -464,6 +566,9 @@ function renderChart(stock) {
   const visibleMacdDea = macd.dea.slice(startIndex, endIndex);
   const visibleK = kd.k.slice(startIndex, endIndex);
   const visibleD = kd.d.slice(startIndex, endIndex);
+  const visibleSignals = buySignals
+    .filter((signal) => signal.index >= startIndex && signal.index < endIndex)
+    .map((signal) => ({ ...signal, visibleIndex: signal.index - startIndex }));
 
   const priceRangeSource = [
     ...visible.map((c) => c.low),
@@ -535,9 +640,17 @@ function renderChart(stock) {
   drawLineSeries(priceArea, candleWidth, panX, visibleSma60, mapPriceY, "#ff5e67", 2.2);
   ctx.restore();
 
+  visibleSignals.forEach((signal) => {
+    const candle = visible[signal.visibleIndex];
+    const x = priceArea.x + signal.visibleIndex * candleWidth + candleWidth / 2 + panX;
+    const y = Math.max(priceArea.y + 26, mapPriceY(candle.high) - 18);
+    drawSignalTag(x, y, signal.label, signal.type);
+  });
+
   drawText("SMA5", priceArea.x + 10, priceArea.y + 18, "#36b4ff", 12);
   drawText("SMA20", priceArea.x + 74, priceArea.y + 18, "#f7c843", 12);
   drawText("SMA60", priceArea.x + 150, priceArea.y + 18, "#ff5e67", 12);
+  drawText("買點: 貼60/收復60 + MACD/KD 轉強", priceArea.x + 230, priceArea.y + 18, "rgba(255,255,255,0.75)", 12);
 
   const volumeMax = Math.max(1, ...visibleVolume);
   const mapVolumeY = (value) => volumeArea.y + ((volumeMax - value) / volumeMax) * volumeArea.h;
