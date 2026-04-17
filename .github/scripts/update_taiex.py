@@ -7,9 +7,12 @@ from urllib.request import Request, urlopen
 
 
 TAIEX_SOURCE_URL = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?interval=1d&range=1y"
-STOCK_0050_SOURCE_URL = "https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date={date_key}&stockNo=0050"
 TAIEX_OUTPUT_PATH = Path("data/taiex.json")
-STOCK_0050_OUTPUT_PATH = Path("data/0050.json")
+TWSE_STOCK_DAY_URL = "https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date={date_key}&stockNo={stock_code}"
+STOCK_OUTPUT_PATHS = {
+    "0050": Path("data/0050.json"),
+    "2330": Path("data/2330.json"),
+}
 
 
 def fetch_json(url: str) -> dict:
@@ -79,10 +82,10 @@ def parse_number(value: str) -> float | None:
     return float(cleaned)
 
 
-def fetch_0050() -> list[dict]:
+def fetch_stock(stock_code: str) -> list[dict]:
     candles = []
     for date_key in recent_month_keys(8):
-        payload = fetch_json(STOCK_0050_SOURCE_URL.format(date_key=date_key))
+        payload = fetch_json(TWSE_STOCK_DAY_URL.format(date_key=date_key, stock_code=stock_code))
         if payload.get("stat") != "OK":
             continue
         for row in payload.get("data", []):
@@ -107,20 +110,24 @@ def fetch_0050() -> list[dict]:
     deduped = []
     seen = set()
     for candle in candles:
-      if candle["date"] in seen:
-          continue
-      seen.add(candle["date"])
-      deduped.append(candle)
+        if candle["date"] in seen:
+            continue
+        seen.add(candle["date"])
+        deduped.append(candle)
     return deduped
 
 
 def main() -> None:
     taiex_candles = fetch_taiex()
-    stock_0050_candles = fetch_0050()
+    stock_candles = {
+        stock_code: fetch_stock(stock_code)
+        for stock_code in STOCK_OUTPUT_PATHS
+    }
 
     TAIEX_OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     TAIEX_OUTPUT_PATH.write_text(json.dumps(taiex_candles, ensure_ascii=False, indent=2), encoding="utf-8")
-    STOCK_0050_OUTPUT_PATH.write_text(json.dumps(stock_0050_candles, ensure_ascii=False, indent=2), encoding="utf-8")
+    for stock_code, output_path in STOCK_OUTPUT_PATHS.items():
+        output_path.write_text(json.dumps(stock_candles[stock_code], ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":

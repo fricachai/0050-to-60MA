@@ -16,7 +16,7 @@ const authorBubbles = [...document.querySelectorAll(".author-bubble")];
 
 const DEFAULT_STOCKS = [
   { code: "0050", name: "元大台灣50" },
-  { code: "大盤", name: "加權指數" },
+  { code: "2330", name: "台積電" },
 ];
 
 const timeframeHours = { "1h": 1, "2h": 2, "3h": 3, "4h": 4, "1d": 24 };
@@ -863,10 +863,10 @@ function loadDemoData() {
   timeframeSelect.value = "1d";
   DEFAULT_STOCKS.forEach(upsertStock);
   generateDemoCandles("0050", "元大台灣50", 50, 180);
-  generateDemoCandles("大盤", "加權指數", 888, 21000);
+  generateDemoCandles("2330", "台積電", 2330, 920);
   state.selectedCode = "0050";
   renderAll();
-  setStatus("官方資料與站內快取都暫時無法取得，才會改用 0050 / 大盤 示範資料。", "success");
+  setStatus("官方資料與站內快取都暫時無法取得，才會改用 0050 / 台積電 示範資料。", "success");
 }
 
 function getCanvasPoint(event) {
@@ -1042,7 +1042,7 @@ async function bootstrap() {
   renderAll();
   const [stockOk, indexOk] = await Promise.all([
     ensureStockData("0050", "元大台灣50"),
-    ensureStockData("大盤", "加權指數"),
+    ensureStockData("2330", "台積電"),
   ]);
   state.selectedCode = "0050";
   renderAll();
