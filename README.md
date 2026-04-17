@@ -27,9 +27,9 @@ python -m http.server 8000
 ## 買點提醒信
 
 - 系統會針對 `0050` 與 `2330` 檢查兩種買點：
-- `貼近 SMA60 轉強`
-- `跌破 / 貫穿 SMA60 後收復轉強`
-- 只有在 `MACD` 或 `KD` 同步出現低檔轉強時，才會標示買點並觸發提醒。
+- `壓到 60 日線`
+- `跌破 / 貫穿 60 日線後收復`
+- 只要符合上述條件，圖上就會標示買點，並可觸發提醒信。
 - 郵件收件者固定為 `fricachai@gmail.com`，前端不提供輸入其他信箱。
 - GitHub Actions workflow `Buy Signal Alert` 已建立，但要真的發信，需在 repo `Settings -> Secrets and variables -> Actions` 設定：
 - `SMTP_HOST`

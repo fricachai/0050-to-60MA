@@ -280,63 +280,17 @@ function detectBuySignals(candles, sma60, macd, kd) {
 
   for (let i = 60; i < candles.length; i += 1) {
     const candle = candles[i];
-    const prev = candles[i - 1];
     const base = sma60[i];
-    const prevBase = sma60[i - 1];
-    const hist = macd.hist[i];
-    const prevHist = macd.hist[i - 1];
-    const dif = macd.dif[i];
-    const prevDif = macd.dif[i - 1];
-    const dea = macd.dea[i];
-    const prevDea = macd.dea[i - 1];
-    const kValue = kd.k[i];
-    const dValue = kd.d[i];
-    const prevK = kd.k[i - 1];
-    const prevD = kd.d[i - 1];
-    if ([base, prevBase, hist, prevHist, dif, prevDif, dea, prevDea, kValue, dValue, prevK, prevD].some((value) => value == null)) continue;
+    if (base == null) continue;
 
-    const recentHistMin = getRecentSeriesMin(macd.hist, i, 6, 0);
-    const recentKMin = getRecentSeriesMin(kd.k, i, 6, 50);
-    const recentDMin = getRecentSeriesMin(kd.d, i, 6, 50);
-    const lowToBasePct = (candle.low - base) / base;
-    const closeToBasePct = (candle.close - base) / base;
-    const nearBase = lowToBasePct >= -0.012 && lowToBasePct <= 0.02;
-    const piercedBase = candle.low < base * 0.998;
-    const recoveredClose = candle.close >= base * 0.995;
-    const reboundStart = candle.close > candle.open && candle.close > prev.close && candle.close >= candle.high - (candle.high - candle.low) * 0.45;
-    const macdTurningUp = hist > prevHist && dif >= prevDif && recentHistMin <= 0;
-    const kdTurningUp = (
-      ((kValue > dValue && prevK <= prevD) || (kValue > prevK && dValue >= prevD))
-      && Math.min(recentKMin ?? 50, recentDMin ?? 50) <= 35
-    );
-    const oscillatorConfirmed = macdTurningUp || kdTurningUp;
+    const touchedBase = candle.low <= base * 1.002 && candle.high >= base * 0.998;
+    const reclaimSignal = candle.low < base * 0.998 && candle.close >= base * 0.995;
 
-    const nearBounceSignal = (
-      nearBase
-      && closeToBasePct >= -0.003
-      && !piercedBase
-      && base >= prevBase * 0.997
-      && reboundStart
-      && oscillatorConfirmed
-    );
-
-    const reclaimSignal = (
-      piercedBase
-      && recoveredClose
-      && candle.close >= prev.close
-      && reboundStart
-      && oscillatorConfirmed
-    );
-
-    if ((nearBounceSignal || reclaimSignal) && i - lastSignalIndex >= 4) {
-      const strengthParts = [];
-      if (macdTurningUp) strengthParts.push("MACD");
-      if (kdTurningUp) strengthParts.push("KD");
+    if ((touchedBase || reclaimSignal) && i - lastSignalIndex >= 4) {
       signals.push({
         index: i,
         type: reclaimSignal ? "reclaim" : "near",
-        label: reclaimSignal ? "買點: 收復60日線" : "買點: 60日線支撐轉強",
-        confirmers: strengthParts,
+        label: reclaimSignal ? "買點: 收復60日線" : "買點: 壓到60日線",
       });
       lastSignalIndex = i;
     }
@@ -650,7 +604,7 @@ function renderChart(stock) {
   drawText("SMA5", priceArea.x + 10, priceArea.y + 18, "#36b4ff", 12);
   drawText("SMA20", priceArea.x + 74, priceArea.y + 18, "#f7c843", 12);
   drawText("SMA60", priceArea.x + 150, priceArea.y + 18, "#ff5e67", 12);
-  drawText("買點: 60日線支撐/收復 + MACD/KD 轉強", priceArea.x + 230, priceArea.y + 18, "rgba(255,255,255,0.75)", 12);
+  drawText("買點: 壓到/收復60日線", priceArea.x + 230, priceArea.y + 18, "rgba(255,255,255,0.75)", 12);
 
   const volumeMax = Math.max(1, ...visibleVolume);
   const mapVolumeY = (value) => volumeArea.y + ((volumeMax - value) / volumeMax) * volumeArea.h;
