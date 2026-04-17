@@ -155,7 +155,12 @@ h1 {
 }
 
 .author-bubble {
-  display: none;
+  left: 0;
+  top: 0;
+  border-radius: 999px;
+  opacity: 0;
+  z-index: 3;
+  will-change: transform, opacity;
 }
 
 .author-orbit-ball {

@@ -12,6 +12,7 @@ const watchlistFileInput = document.getElementById("watchlistFileInput");
 const priceFileInput = document.getElementById("priceFileInput");
 const timeframeSelect = document.getElementById("timeframeSelect");
 const authorCard = document.querySelector(".author-card");
+const authorBubbles = [...document.querySelectorAll(".author-bubble")];
 const authorOrbitBall = document.querySelector(".author-orbit-ball");
 
 const DEFAULT_STOCKS = [
@@ -96,6 +97,68 @@ function getEllipsePoint(width, height, angle, inset = 0) {
   };
 }
 
+function randomBubbleGradient() {
+  const palettes = [
+    ["#fff7c5", "#d9a8ff"],
+    ["#fff0a6", "#ff9ab8"],
+    ["#fff2c8", "#71d7ff"],
+    ["#f8fcff", "#7bffd2"],
+    ["#ffe9bd", "#ffb16f"],
+  ];
+  const [a, b] = palettes[Math.floor(Math.random() * palettes.length)];
+  return `radial-gradient(circle at 34% 34%, ${a}, ${b} 58%, rgba(255,255,255,0.08) 80%, transparent 82%)`;
+}
+
+function animateAuthorBubble(bubble) {
+  if (!authorCard || !bubble) return;
+  const width = authorCard.offsetWidth;
+  const height = authorCard.offsetHeight;
+  if (!width || !height) return;
+
+  const size = rand(5, 11);
+  const startAngle = rand(0, Math.PI * 2);
+  const direction = Math.random() > 0.5 ? 1 : -1;
+  const travel = rand(Math.PI / 6, Math.PI / 2) * direction;
+  const midAngle = startAngle + travel * rand(0.45, 0.58);
+  const endAngle = startAngle + travel;
+  const inset = size / 2 + rand(2, 5);
+  const start = getEllipsePoint(width, height, startAngle, inset);
+  const middle = getEllipsePoint(width, height, midAngle, inset);
+  const end = getEllipsePoint(width, height, endAngle, inset);
+
+  bubble.style.width = `${size}px`;
+  bubble.style.height = `${size}px`;
+  bubble.style.background = randomBubbleGradient();
+  bubble.style.boxShadow = `0 0 ${Math.round(size + 4)}px rgba(255,255,255,0.34)`;
+  bubble.getAnimations().forEach((anim) => anim.cancel());
+  const animation = bubble.animate(
+    [
+      {
+        transform: `translate(${start.x - size / 2}px, ${start.y - size / 2}px) scale(0.55)`,
+        opacity: 0,
+      },
+      {
+        transform: `translate(${middle.x - size / 2}px, ${middle.y - size / 2}px) scale(${rand(0.95, 1.2)})`,
+        opacity: rand(0.7, 0.98),
+        offset: 0.55,
+      },
+      {
+        transform: `translate(${end.x - size / 2}px, ${end.y - size / 2}px) scale(0.72)`,
+        opacity: 0,
+      },
+    ],
+    {
+      duration: rand(1800, 3200),
+      easing: "ease-in-out",
+      fill: "forwards",
+    },
+  );
+
+  animation.onfinish = () => {
+    setTimeout(() => animateAuthorBubble(bubble), rand(120, 580));
+  };
+}
+
 function animateOrbitBall() {
   if (!authorCard || !authorOrbitBall) return;
   const width = authorCard.offsetWidth;
@@ -135,6 +198,9 @@ function animateOrbitBall() {
 
 function initAuthorCardEffects() {
   if (!authorCard || !authorOrbitBall) return;
+  authorBubbles.forEach((bubble, index) => {
+    setTimeout(() => animateAuthorBubble(bubble), index * 180);
+  });
   setTimeout(() => animateOrbitBall(), 120);
 }
 
