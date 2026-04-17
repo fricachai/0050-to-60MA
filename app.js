@@ -68,6 +68,14 @@ function formatCompactNumber(value) {
   return formatNumber(value, 0);
 }
 
+function describeFetchError(error) {
+  const message = String(error?.message || error || "");
+  if (message === "Failed to fetch") {
+    return "瀏覽器連不到外部資料端點";
+  }
+  return message;
+}
+
 function canonicalizeCode(rawCode) {
   const code = String(rawCode || "").trim().toUpperCase();
   if (!code) return "";
@@ -345,13 +353,12 @@ function renderChart(stock) {
   const changeValue = lastCandle.close - prevClose;
   const changePct = prevClose === 0 ? 0 : ((lastCandle.close / prevClose) - 1) * 100;
 
-  const priceArea = { x: 42, y: 72, w: 890, h: 350 };
-  const xAxisArea = { x: 42, y: 430, w: 890, h: 38 };
-  const priceScaleArea = { x: 932, y: 72, w: 78, h: 350 };
-  const volumeArea = { x: 42, y: 500, w: 968, h: 100 };
-  const macdArea = { x: 42, y: 630, w: 968, h: 110 };
-  const kdjArea = { x: 42, y: 770, w: 968, h: 100 };
-  const infoArea = { x: 1040, y: 90, w: 250, h: 298 };
+  const priceArea = { x: 42, y: 72, w: 1120, h: 350 };
+  const xAxisArea = { x: 42, y: 430, w: 1120, h: 38 };
+  const priceScaleArea = { x: 1162, y: 72, w: 78, h: 350 };
+  const volumeArea = { x: 42, y: 500, w: 1198, h: 100 };
+  const macdArea = { x: 42, y: 630, w: 1198, h: 110 };
+  const kdjArea = { x: 42, y: 770, w: 1198, h: 100 };
   state.chartLayout = { priceArea, xAxisArea, priceScaleArea, volumeArea, macdArea, kdjArea };
 
   drawRoundRect(
@@ -556,22 +563,6 @@ function renderChart(stock) {
     ctx.stroke();
   }
 
-  drawRoundRect(infoArea.x, infoArea.y, infoArea.w, infoArea.h, 14, "rgba(19,22,30,0.95)", "#2a3040");
-  const rows = [
-    ["最新收盤", formatNumber(lastCandle.close, 2), "#111317", "#f7c843"],
-    ["今日漲跌", `${formatNumber(changeValue, 2)} / ${formatNumber(changePct, 2)}%`, "#ffffff", changeValue >= 0 ? "#15d18d" : "#ff5263"],
-    ["SMA5", formatNumber(sma5[candles.length - 1], 2), "#111317", "#36b4ff"],
-    ["SMA20", formatNumber(sma20[candles.length - 1], 2), "#111317", "#f7c843"],
-    ["SMA60", formatNumber(sma60[candles.length - 1], 2), "#ffffff", "#ff5e67"],
-    ["成交量", formatCompactNumber(lastCandle.volume ?? 0), "#111317", "#d7dee9"],
-  ];
-  rows.forEach((row, i) => {
-    const top = infoArea.y + 14 + i * 44;
-    drawText(row[0], infoArea.x + 16, top + 17, "#c7cfdb", 13);
-    drawRoundRect(infoArea.x + 102, top, 132, 28, 6, row[3], null);
-    drawText(String(row[1]), infoArea.x + 168, top + 18, row[2], 12, "center");
-  });
-
   const leftDate = formatDate(visible[0].date);
   const midDate = formatDate(visible[Math.floor((visible.length - 1) / 2)].date);
   const rightDate = formatDate(visible[visible.length - 1].date);
@@ -698,46 +689,27 @@ async function fetchTwseStockData(code) {
   return { code, name: extractNameFromTitle(nameSource, code), candles: deduped };
 }
 
-async function fetchTaiexMonth(dateKey) {
-  const [priceResponse, volumeResponse] = await Promise.all([
-    fetch(`https://www.twse.com.tw/exchangeReport/TAIEX?response=json&date=${dateKey}`),
-    fetch(`https://www.twse.com.tw/exchangeReport/FMTQIK?response=json&date=${dateKey}`),
-  ]);
-  if (!priceResponse.ok) throw new Error(`HTTP ${priceResponse.status}`);
-  if (!volumeResponse.ok) throw new Error(`HTTP ${volumeResponse.status}`);
-
-  const pricePayload = await priceResponse.json();
-  const volumePayload = await volumeResponse.json();
-  if (pricePayload.stat !== "OK") return [];
-
-  const volumeByDate = new Map(
-    (volumePayload.data || []).map((row) => [
-      parseTwseDate(row[0]),
-      parseNumber(row[2]) ?? parseNumber(row[1]) ?? 0,
-    ]),
-  );
-
-  return (pricePayload.data || [])
-    .map((row) => {
-      const date = parseTwseDate(row[0]);
-      return {
-        date,
-        open: parseNumber(row[1]),
-        high: parseNumber(row[2]),
-        low: parseNumber(row[3]),
-        close: parseNumber(row[4]),
-        volume: volumeByDate.get(date) ?? 0,
-      };
-    })
-    .filter((row) => row.date && [row.open, row.high, row.low, row.close].every(Number.isFinite));
+function normalizeCandlePayload(rows) {
+  return rows
+    .map((row) => ({
+      date: row.date,
+      open: Number(row.open),
+      high: Number(row.high),
+      low: Number(row.low),
+      close: Number(row.close),
+      volume: Number(row.volume || 0),
+    }))
+    .filter((row) => row.date && [row.open, row.high, row.low, row.close].every(Number.isFinite))
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
 }
 
 async function fetchTaiexData() {
-  const results = await Promise.all(getRecentMonthKeys(8).map((key) => fetchTaiexMonth(key)));
-  const candles = results.flat().sort((a, b) => new Date(a.date) - new Date(b.date));
-  const deduped = candles.filter((candle, index, array) => index === 0 || candle.date !== array[index - 1].date);
-  if (!deduped.length) throw new Error("No market index data");
-  return { code: "大盤", name: "加權指數", candles: deduped };
+  const response = await fetch(`./data/taiex.json?ts=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const payload = await response.json();
+  const candles = normalizeCandlePayload(Array.isArray(payload) ? payload : payload.candles || []);
+  if (!candles.length) throw new Error("No cached market index data");
+  return { code: "大盤", name: "加權指數", candles };
 }
 
 async function fetchInstrumentData(code) {
@@ -765,7 +737,12 @@ async function ensureStockData(code, preferredName = "") {
       upsertStock({ code: normalizedCode, name: preferredName });
       renderAll();
     }
-    setStatus(`${normalizedCode} 載入失敗：${error.message}`, "error");
+    const errorMessage = describeFetchError(error);
+    if (isMarketIndexCode(normalizedCode)) {
+      setStatus(`大盤載入失敗：${errorMessage}。目前大盤改讀站內的快取資料檔，若仍失敗，通常是 GitHub Pages 尚未部署最新的 taiex.json。`, "error");
+    } else {
+      setStatus(`${normalizedCode} 載入失敗：${errorMessage}`, "error");
+    }
     return false;
   } finally {
     state.loadingCodes.delete(normalizedCode);
