@@ -1,0 +1,95 @@
+﻿<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>fricachai 股票觀察面板</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <main class="chart-panel">
+      <header class="chart-header">
+        <div>
+          <div class="title-row">
+            <h1 id="chartTitle">載入中...</h1>
+            <div class="author-card">
+              <span class="author-ring"></span>
+              <span class="author-bubble bubble-1"></span>
+              <span class="author-bubble bubble-2"></span>
+              <span class="author-bubble bubble-3"></span>
+              <span class="author-bubble bubble-4"></span>
+              <span class="author-bubble bubble-5"></span>
+              <span class="author-spark spark-1"></span>
+              <span class="author-spark spark-2"></span>
+              <span class="author-spark spark-3"></span>
+              <span class="author-copy">程式設計者：fricachai (2026/04/15版)</span>
+            </div>
+          </div>
+          <p id="closeInfo" class="close-info">最新收盤價：--</p>
+        </div>
+        <div class="header-actions">
+          <select id="timeframeSelect" class="ghost-select">
+            <option value="1h">1小時</option>
+            <option value="2h">2小時</option>
+            <option value="3h">3小時</option>
+            <option value="4h">4小時</option>
+            <option value="1d" selected>1日</option>
+          </select>
+          <label class="ghost-button file-button">
+            匯入 K 線 CSV
+            <input id="priceFileInput" type="file" accept=".csv" hidden />
+          </label>
+        </div>
+      </header>
+
+      <section class="chart-stage">
+        <canvas id="chartCanvas" width="1320" height="940"></canvas>
+        <div class="chart-help">
+          <span>CSV 欄位格式：`code,name,date,open,high,low,close,volume`</span>
+        </div>
+      </section>
+    </main>
+
+    <aside class="watchlist-panel">
+      <div class="watchlist-top">
+        <div>
+          <p class="eyebrow">右側觀察清單</p>
+          <h2>股票代號 / 名稱</h2>
+        </div>
+        <label class="icon-button file-button">
+          匯入
+          <input id="watchlistFileInput" type="file" accept=".csv" hidden />
+        </label>
+      </div>
+
+      <form id="stockForm" class="stock-form">
+        <input id="codeInput" type="text" maxlength="12" placeholder="股票代號，例如 2330 或大盤" />
+        <input id="nameInput" type="text" maxlength="30" placeholder="名稱可留空，會沿用官方資料" />
+        <button type="submit">加入 / 抓取</button>
+      </form>
+
+      <p id="statusText" class="status-text">預設已載入 0050 與大盤，點右側清單可切換主圖與下方三個指標。</p>
+
+      <div class="watchlist-toolbar">
+        <input id="searchInput" type="search" placeholder="搜尋代號或名稱" />
+      </div>
+
+      <div class="watchlist-header">
+        <span>商品</span>
+        <span>名稱</span>
+      </div>
+      <div id="watchlist" class="watchlist"></div>
+
+      <section class="import-note">
+        <h3>匯入說明</h3>
+        <p>觀察清單 CSV：`code` 或 `code,name` 都可以</p>
+        <p>K 線 CSV：`code,name,date,open,high,low,close,volume`</p>
+        <p>同一支股票可重複匯入，系統會自動刷新圖表資料。</p>
+      </section>
+    </aside>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>

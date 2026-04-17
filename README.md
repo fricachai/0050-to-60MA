@@ -1,0 +1,60 @@
+# Stock_K-chat
+
+這是一個可直接部署到 GitHub Pages 的靜態股票觀察面板。
+
+本地使用時，直接開啟 `index.html` 即可。
+
+## GitHub Pages 部署
+
+這個 repo 已加入 GitHub Pages workflow。
+
+在 GitHub 倉庫中請確認：
+
+1. 進入 `Settings` -> `Pages`
+2. `Source` 選擇 `GitHub Actions`
+3. push 到 `main` 後，GitHub Actions 會自動部署
+
+部署完成後，網址通常會是：
+
+`https://fricachai.github.io/Stock_K-chat/`
+
+## 功能
+
+- 左側顯示深色 K 線主圖、Supertrend、買賣訊號標籤、CCI 線與持倉浮動獲利區。
+- 右側提供股票觀察清單，可只輸入股票代號，自動抓取股票名稱。
+- 會向 TWSE 官方端點抓取最近數月的日 K 資料並更新圖表。
+- 支援匯入觀察清單 CSV。
+- 支援匯入 K 線 CSV，點選右側股票後切換左側圖表。
+- 內建示範資料，可先直接看到完整畫面。
+
+## CSV 格式
+
+觀察清單：
+
+```csv
+code,name
+2330,台積電
+2317,鴻海
+```
+
+也可只放代號：
+
+```csv
+code
+2330
+2317
+```
+
+K 線資料：
+
+```csv
+code,name,date,open,high,low,close,volume
+2330,台積電,2026-04-01T09:00:00,912,918,906,916,12543
+2330,台積電,2026-04-01T13:00:00,916,921,910,919,10211
+```
+
+## 備註
+
+- 目前版本使用前端本地運算，已將你提供的 Pine Script 核心判斷轉寫成 JavaScript。
+- 自動抓取目前接的是 TWSE 官方日成交資料，因此圖表是日 K，不是 4 小時 K。
+- 若要接即時資料、4H K 或上櫃股票來源，可以在這個基礎上再往下串接。
