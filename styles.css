@@ -74,7 +74,7 @@ h1 {
 
 .author-card {
   position: relative;
-  overflow: visible;
+  overflow: hidden;
   isolation: isolate;
   display: inline-flex;
   align-items: center;
@@ -113,11 +113,11 @@ h1 {
 .author-card::before {
   content: "";
   position: absolute;
-  inset: -2px;
-  border-radius: 30px;
+  inset: 0;
+  border-radius: 28px;
   background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.05) 16%, rgba(255, 156, 218, 0.16) 48%, rgba(110, 204, 255, 0.16) 76%, rgba(255, 255, 255, 0.18));
   filter: blur(4px);
-  opacity: 0.9;
+  opacity: 0.65;
   pointer-events: none;
   z-index: -1;
 }
@@ -125,13 +125,13 @@ h1 {
 .author-card::after {
   content: "";
   position: absolute;
-  width: 96px;
-  height: 210%;
-  top: -56%;
-  left: -24%;
-  transform: rotate(20deg);
-  border-radius: 20px;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0));
+  width: 74px;
+  height: calc(100% - 10px);
+  top: 5px;
+  left: -26%;
+  transform: skewX(-20deg);
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.34), rgba(255, 223, 168, 0.22), rgba(255, 255, 255, 0));
   opacity: 0;
   mix-blend-mode: screen;
   pointer-events: none;
@@ -146,7 +146,7 @@ h1 {
 
 .author-ring {
   position: absolute;
-  inset: -1px;
+  inset: 1px;
   border-radius: 28px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow:
@@ -159,6 +159,7 @@ h1 {
 }
 
 .author-bubble,
+.author-orbit-ball,
 .author-spark {
   position: absolute;
   pointer-events: none;
@@ -171,6 +172,21 @@ h1 {
   left: 0;
   top: 0;
   will-change: transform, opacity;
+}
+
+.author-orbit-ball {
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: radial-gradient(circle at 32% 32%, #fffef5 0%, #ffe087 22%, #ff7ad9 58%, #68dcff 100%);
+  box-shadow:
+    0 0 8px rgba(255, 255, 255, 0.95),
+    0 0 14px rgba(255, 141, 217, 0.58),
+    0 0 18px rgba(104, 220, 255, 0.52);
+  z-index: 4;
+  will-change: transform, opacity, filter;
 }
 
 .bubble-1 {
@@ -264,13 +280,13 @@ h1 {
     opacity: 0;
   }
   12% {
-    opacity: 0.2;
+    opacity: 0.14;
   }
   52% {
-    opacity: 0.85;
+    opacity: 0.52;
   }
   100% {
-    left: 108%;
+    left: 104%;
     opacity: 0;
   }
 }
