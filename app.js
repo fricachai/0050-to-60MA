@@ -12,7 +12,6 @@ const watchlistFileInput = document.getElementById("watchlistFileInput");
 const priceFileInput = document.getElementById("priceFileInput");
 const timeframeSelect = document.getElementById("timeframeSelect");
 const authorCard = document.querySelector(".author-card");
-const authorBubbles = [...document.querySelectorAll(".author-bubble")];
 const authorOrbitBall = document.querySelector(".author-orbit-ball");
 
 const DEFAULT_STOCKS = [
@@ -88,63 +87,12 @@ function isMarketIndexCode(code) {
   return canonicalizeCode(code) === "大盤";
 }
 
-function getAuthorBorderPoint(width, height) {
-  const angle = rand(0, Math.PI * 2);
-  return getEllipsePoint(width, height, angle, 5);
-}
-
 function getEllipsePoint(width, height, angle, inset = 0) {
   const radiusX = Math.max(width / 2 - inset, 1);
   const radiusY = Math.max(height / 2 - inset, 1);
   return {
     x: width / 2 + Math.cos(angle) * radiusX,
     y: height / 2 + Math.sin(angle) * radiusY,
-  };
-}
-
-function randomBubbleGradient() {
-  const palettes = [
-    ["#fff8bd", "#ff91d9"],
-    ["#fff6b8", "#ffc989"],
-    ["#f8ffff", "#9adfff"],
-    ["#fff6d8", "#cda6ff"],
-    ["#fff4ad", "#ff94c9"],
-  ];
-  const [a, b] = palettes[Math.floor(Math.random() * palettes.length)];
-  return `radial-gradient(circle at 34% 34%, ${a}, ${b} 56%, rgba(255,255,255,0.08) 78%, transparent 80%)`;
-}
-
-function animateAuthorBubble(bubble) {
-  if (!authorCard || !bubble) return;
-  const width = authorCard.offsetWidth;
-  const height = authorCard.offsetHeight;
-  if (!width || !height) return;
-  const startAngle = rand(0, Math.PI * 2);
-  const direction = Math.random() > 0.5 ? 1 : -1;
-  const travel = rand(Math.PI / 3, Math.PI * 1.3) * direction;
-  const midAngle = startAngle + travel * rand(0.42, 0.58);
-  const endAngle = startAngle + travel;
-  const start = getEllipsePoint(width, height, startAngle, 6);
-  const middle = getEllipsePoint(width, height, midAngle, 6);
-  const end = getEllipsePoint(width, height, endAngle, 6);
-  const size = rand(4, 12);
-  const duration = rand(2200, 7600);
-  bubble.style.width = `${size}px`;
-  bubble.style.height = `${size}px`;
-  bubble.style.background = randomBubbleGradient();
-  bubble.style.boxShadow = `0 0 ${Math.round(size + 4)}px rgba(255,255,255,0.42)`;
-  bubble.style.transform = `translate(${start.x - size / 2}px, ${start.y - size / 2}px)`;
-  bubble.getAnimations().forEach((anim) => anim.cancel());
-  const animation = bubble.animate(
-    [
-      { transform: `translate(${start.x - size / 2}px, ${start.y - size / 2}px) scale(${rand(0.72, 1.08)})`, opacity: rand(0.28, 0.76) },
-      { transform: `translate(${middle.x - size / 2}px, ${middle.y - size / 2}px) scale(${rand(0.95, 1.26)})`, opacity: rand(0.55, 1) },
-      { transform: `translate(${end.x - size / 2}px, ${end.y - size / 2}px) scale(${rand(0.6, 1)})`, opacity: rand(0.2, 0.68) },
-    ],
-    { duration, easing: "ease-in-out", fill: "forwards" },
-  );
-  animation.onfinish = () => {
-    setTimeout(() => animateAuthorBubble(bubble), rand(120, 900));
   };
 }
 
@@ -158,7 +106,7 @@ function animateOrbitBall() {
   const direction = Math.random() > 0.5 ? 1 : -1;
   const laps = rand(1.1, 2.4);
   const endAngle = startAngle + direction * Math.PI * 2 * laps;
-  const radiusInset = size / 2 + 3;
+  const radiusInset = size / 2 + 2;
   const keyframes = [];
   const steps = 48;
 
@@ -186,13 +134,8 @@ function animateOrbitBall() {
 }
 
 function initAuthorCardEffects() {
-  if (!authorCard || !authorBubbles.length) return;
-  authorBubbles.forEach((bubble, index) => {
-    setTimeout(() => animateAuthorBubble(bubble), index * 180);
-  });
-  if (authorOrbitBall) {
-    setTimeout(() => animateOrbitBall(), 120);
-  }
+  if (!authorCard || !authorOrbitBall) return;
+  setTimeout(() => animateOrbitBall(), 120);
 }
 
 function sma(values, length) {
