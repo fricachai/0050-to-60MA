@@ -703,12 +703,22 @@ function normalizeCandlePayload(rows) {
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 }
 
-async function fetchTaiexData() {
-  const response = await fetch(`./data/taiex.json?ts=${Date.now()}`, { cache: "no-store" });
+async function fetchCachedCandles(path) {
+  const response = await fetch(`${path}?ts=${Date.now()}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   const payload = await response.json();
   const candles = normalizeCandlePayload(Array.isArray(payload) ? payload : payload.candles || []);
-  if (!candles.length) throw new Error("No cached market index data");
+  if (!candles.length) throw new Error("No cached data");
+  return candles;
+}
+
+async function fetchCachedStockData(code, fallbackName) {
+  const candles = await fetchCachedCandles(`./data/${code}.json`);
+  return { code, name: fallbackName || code, candles };
+}
+
+async function fetchTaiexData() {
+  const candles = await fetchCachedCandles("./data/taiex.json");
   return { code: "大盤", name: "加權指數", candles };
 }
 
@@ -717,18 +727,34 @@ async function fetchInstrumentData(code) {
   return fetchTwseStockData(code);
 }
 
+async function fetchInstrumentDataWithFallback(code, preferredName = "") {
+  try {
+    return await fetchInstrumentData(code);
+  } catch (error) {
+    if (isMarketIndexCode(code)) {
+      const cached = await fetchTaiexData();
+      return { ...cached, sourceError: error };
+    }
+    const cached = await fetchCachedStockData(code, preferredName);
+    return { ...cached, sourceError: error };
+  }
+}
+
 async function ensureStockData(code, preferredName = "") {
   const normalizedCode = canonicalizeCode(code);
   if (!normalizedCode || state.loadingCodes.has(normalizedCode)) return false;
   state.loadingCodes.add(normalizedCode);
   setStatus(`正在抓取 ${normalizedCode} 的 TWSE 官方資料...`);
   try {
-    const result = await fetchInstrumentData(normalizedCode);
+    const result = await fetchInstrumentDataWithFallback(normalizedCode, preferredName || "");
     upsertStock({ code: result.code, name: preferredName || result.name });
     state.rawCandlesByCode.set(normalizedCode, result.candles);
     state.selectedCode = normalizedCode;
     renderAll();
-    if (state.timeframe === "1d") {
+    if (result.sourceError) {
+      const errorMessage = describeFetchError(result.sourceError);
+      setStatus(`${normalizedCode} 官方資料暫時無法取得，已改用站內快取資料。原因：${errorMessage}`, "success");
+    } else if (state.timeframe === "1d") {
       setStatus(`已載入 ${normalizedCode} ${preferredName || result.name} 的官方日 K 資料。`, "success");
     }
     return true;
@@ -840,7 +866,7 @@ function loadDemoData() {
   generateDemoCandles("大盤", "加權指數", 888, 21000);
   state.selectedCode = "0050";
   renderAll();
-  setStatus("TWSE 官方資料暫時無法取得，已改用 0050 / 大盤 示範資料。", "success");
+  setStatus("官方資料與站內快取都暫時無法取得，才會改用 0050 / 大盤 示範資料。", "success");
 }
 
 function getCanvasPoint(event) {
