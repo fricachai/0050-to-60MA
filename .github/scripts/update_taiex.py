@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
+from json import JSONDecodeError
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -17,15 +19,27 @@ STOCK_OUTPUT_PATHS = {
 
 
 def fetch_json(url: str) -> dict:
-    request = Request(
-        url,
-        headers={
-            "User-Agent": "Mozilla/5.0",
-            "Accept": "application/json",
-        },
-    )
-    with urlopen(request, timeout=30) as response:
-        return json.load(response)
+    last_error: Exception | None = None
+    for attempt in range(4):
+        request = Request(
+            url,
+            headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "application/json,text/plain,*/*",
+                "Referer": "https://www.twse.com.tw/",
+                "Cache-Control": "no-cache",
+            },
+        )
+        try:
+            with urlopen(request, timeout=30) as response:
+                payload = response.read().decode("utf-8-sig").strip()
+                if not payload:
+                    raise ValueError("Empty response body")
+                return json.loads(payload)
+        except (JSONDecodeError, ValueError) as error:
+            last_error = error
+            time.sleep(1.2 * (attempt + 1))
+    raise RuntimeError(f"Failed to decode JSON from {url}") from last_error
 
 
 def fetch_taiex() -> list[dict]:
@@ -89,7 +103,11 @@ def parse_number(value: str) -> float | None:
 def fetch_stock(stock_code: str) -> list[dict]:
     candles = []
     for date_key in recent_month_keys():
-        payload = fetch_json(TWSE_STOCK_DAY_URL.format(date_key=date_key, stock_code=stock_code))
+        try:
+            payload = fetch_json(TWSE_STOCK_DAY_URL.format(date_key=date_key, stock_code=stock_code))
+        except Exception as error:
+            print(f"Skip {stock_code} {date_key}: {error}")
+            continue
         if payload.get("stat") != "OK":
             continue
         for row in payload.get("data", []):
