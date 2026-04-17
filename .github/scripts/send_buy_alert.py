@@ -81,25 +81,56 @@ def recent_min(series: list[float | None], end_index: int, lookback: int, fallba
 def detect_buy_signals(candles: list[dict]) -> list[dict]:
     closes = [float(item["close"]) for item in candles]
     sma60 = sma(closes, 60)
+    macd = compute_macd(closes)
+    kd = compute_kd(candles)
     signals: list[dict] = []
     last_signal_index = -10
 
     for index in range(60, len(candles)):
         candle = candles[index]
+        prev = candles[index - 1]
         base = sma60[index]
         if base is None:
             continue
 
+        recent_hist_min = recent_min(macd["hist"], index, 6, 0)
+        recent_k_min = recent_min(kd["k"], index, 6, 50)
+        recent_d_min = recent_min(kd["d"], index, 6, 50)
         touched_base = candle["low"] <= base * 1.002 and candle["high"] >= base * 0.998
         reclaim_signal = candle["low"] < base * 0.998 and candle["close"] >= base * 0.995
+        close_to_base_pct = (candle["low"] - base) / base
+        near_but_untouched = close_to_base_pct > 0.002 and close_to_base_pct <= 0.018 and candle["low"] > base * 1.002
+        rebound_start = (
+            candle["close"] > candle["open"]
+            and candle["close"] > prev["close"]
+            and candle["close"] >= candle["high"] - (candle["high"] - candle["low"]) * 0.45
+        )
+        macd_turning_up = (
+            macd["hist"][index] is not None
+            and macd["hist"][index - 1] is not None
+            and macd["dif"][index] is not None
+            and macd["dif"][index - 1] is not None
+            and macd["hist"][index] > macd["hist"][index - 1]
+            and macd["dif"][index] >= macd["dif"][index - 1]
+            and recent_hist_min <= 0
+        )
+        kd_turning_up = (
+            kd["k"][index] is not None
+            and kd["d"][index] is not None
+            and kd["k"][index - 1] is not None
+            and kd["d"][index - 1] is not None
+            and ((kd["k"][index] > kd["d"][index] and kd["k"][index - 1] <= kd["d"][index - 1]) or (kd["k"][index] > kd["k"][index - 1] and kd["d"][index] >= kd["d"][index - 1]))
+            and min(recent_k_min, recent_d_min) <= 35
+        )
+        early_signal = near_but_untouched and rebound_start and (macd_turning_up or kd_turning_up)
 
-        if (touched_base or reclaim_signal) and index - last_signal_index >= 4:
+        if (touched_base or reclaim_signal or early_signal) and index - last_signal_index >= 4:
             signals.append(
                 {
                     "index": index,
                     "date": candle["date"][:10],
                     "close": candle["close"],
-                    "type": "收復60日線" if reclaim_signal else "壓到60日線",
+                    "type": "收復60日線" if reclaim_signal else "接近60日線轉強" if early_signal else "壓到60日線",
                 }
             )
             last_signal_index = index
